@@ -1,0 +1,3 @@
+---
+- src: https://github.com/aurelienmaury/ansible-role-debian-base.git
+  name: debian-base

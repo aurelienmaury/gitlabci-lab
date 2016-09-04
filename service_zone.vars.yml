@@ -1,0 +1,12 @@
+---
+srv_name: "Gitlab-CI"
+srv_az: "eu-west-1a"
+srv_keypair: "amaury_aws"
+srv_vpc_cidr: "10.111.0.0/16"
+srv_public_subnet_cidr: "10.111.1.0/24"
+srv_private_subnet_cidr: "10.111.10.0/24"
+srv_ami_id: "ami-e079f893"
+srv_user: "admin"
+srv_instance_type: "t2.medium"
+
+srv_key_path: "/Users/amaury/.ssh/amaury_aws.pem"

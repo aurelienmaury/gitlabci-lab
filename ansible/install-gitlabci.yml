@@ -1,0 +1,6 @@
+---
+- hosts: gitlabci
+  become: yes
+
+  roles:
+    - gitlab-ci

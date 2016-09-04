@@ -1,0 +1,93 @@
+---
+- hosts: localhost
+  become: no
+
+  pre_tasks:
+    - name: Checking for AWS mandatory env vars
+      fail: msg="Mandatory env var {{ item }} not found."
+      when: lookup('env', item) == ''
+      with_items:
+        - "AWS_DEFAULT_REGION"
+        - "AWS_SECRET_ACCESS_KEY"
+        - "AWS_ACCESS_KEY_ID"
+
+    - name: Generating terraform vars
+      template:
+        src="templates/tfvars.j2"
+        dest="{{ playbook_dir }}/../terraform/terraform.tfvars"
+
+  tasks:
+    - name: Applying Terraform (may take several minutes)
+      shell: >
+        terraform get -update && terraform apply
+      args:
+        chdir: "{{ playbook_dir }}/../terraform"
+      register: tf_apply_raw
+      changed_when: not (tf_apply_raw.stdout|search('0 added, 0 changed, 0 destroyed'))
+
+    - name: Getting Terraform's output 'bastion_ip'
+      shell: >
+        terraform output bastion_ip
+      args:
+        chdir: "{{ playbook_dir }}/../terraform"
+      register: bastion_ip_raw
+      changed_when: false
+
+    - name: Adding 'bastion_ip' to host group 'bastions'
+      add_host:
+        name="{{ bastion_ip_raw.stdout }}"
+        groups=bastions
+        ansible_ssh_private_key_file="{{ srv_key_path }}"
+        ansible_user="{{ srv_user }}"
+      changed_when: false
+
+    - name: Waiting for bastion to be reachable via ssh
+      wait_for:
+        port=22
+        host="{{ bastion_ip_raw.stdout }}"
+        search_regex=OpenSSH
+        delay=10
+        timeout=300
+
+- hosts: bastions
+  become: yes
+
+  pre_tasks:
+    - name: Ansible-ization
+      script: >
+        {{ playbook_dir }}/scripts/ansible-seed-debian.sh
+      register: ansible_seed
+      changed_when: ansible_seed.rc == 0
+      failed_when: ansible_seed.rc != 0 and ansible_seed.rc != 42
+
+  roles:
+    - debian-base
+
+- hosts: localhost
+  become: no
+  tasks:
+    - name: Generating ssh.cfg
+      template:
+        src="templates/ssh.cfg.j2"
+        dest="{{ playbook_dir }}/../ssh.cfg"
+
+    - name: Generating ssh.cfg
+      template:
+        src="templates/hosts.j2"
+        dest="{{ playbook_dir }}/../hosts"
+
+    - name: Removing default host inventory from ansible.cfg
+      lineinfile:
+        dest="{{ playbook_dir }}/../ansible.cfg"
+        line="inventory=./hosts"
+        state=present
+        insertafter="^\[defaults\]$"
+
+    - name: Adding ssh options to ansible.cfg
+      blockinfile:
+        dest: "{{ playbook_dir }}/../ansible.cfg"
+        state: present
+        block: |
+          [ssh_connection]
+          pipelining=True
+          ssh_args="-F ssh.cfg"

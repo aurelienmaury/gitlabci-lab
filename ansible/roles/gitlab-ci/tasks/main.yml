@@ -1,0 +1,28 @@
+---
+
+- apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - curl
+    - ca-certificates
+    - postfix
+    - debian-archive-keyring
+
+- apt_key:
+    url: "https://packages.gitlab.com/gitlab/gitlab-ce/gpgkey"
+    state: present
+
+- apt_repository:
+    repo: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - "deb https://packages.gitlab.com/gitlab/gitlab-ce/debian/ jessie main"
+    - "deb-src https://packages.gitlab.com/gitlab/gitlab-ce/debian/ jessie main"
+
+- apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - gitlab-ce
