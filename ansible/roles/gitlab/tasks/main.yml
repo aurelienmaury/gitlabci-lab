@@ -1,0 +1,59 @@
+---
+- apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - curl
+    - ca-certificates
+    - postfix
+    - debian-archive-keyring
+
+- apt_key:
+    url: "https://packages.gitlab.com/gitlab/gitlab-ce/gpgkey"
+    state: present
+
+- apt_repository:
+    repo: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - "deb https://packages.gitlab.com/gitlab/gitlab-ce/debian/ jessie main"
+    - "deb-src https://packages.gitlab.com/gitlab/gitlab-ce/debian/ jessie main"
+
+- apt:
+    name: "gitlab-ce"
+    state: present
+  notify: gitlab reconfigure
+
+- lineinfile:
+    dest: "/etc/gitlab/gitlab.rb"
+    regexp: "^external_url 'http[s]*://(.*)'"
+    backrefs: yes
+    line: >-
+      external_url 'https://\1'
+  notify: gitlab reconfigure
+
+- lineinfile:
+    dest: "/etc/gitlab/gitlab.rb"
+    regexp: "^nginx\\['redirect_http_to_https'\\].*"
+    line: "nginx['redirect_http_to_https'] = true"
+  notify: gitlab reconfigure
+
+- shell: >-
+    cat /etc/gitlab/gitlab.rb | sed -rn "s/^external_url 'https:\/\/(.*)'$/\1/p"
+  changed_when: false
+  register:
+    discovered_gitlab_host
+
+- name: create self-signed SSL cert
+  shell: >-
+    mkdir /etc/gitlab/ssl &&
+    openssl req -new -nodes -x509
+    -subj "/C=FR/ST=IDF/L=Paris/O=IT/CN={{ discovered_gitlab_host.stdout }}/"
+    -days 3650
+    -extensions v3_ca
+    -keyout /etc/gitlab/ssl/{{ discovered_gitlab_host.stdout }}.key
+    -out /etc/gitlab/ssl/{{ discovered_gitlab_host.stdout }}.crt
+  args:
+    creates: "/etc/gitlab/ssl/{{ discovered_gitlab_host.stdout }}.crt"
+  notify: gitlab reconfigure

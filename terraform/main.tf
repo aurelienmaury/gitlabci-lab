@@ -74,6 +74,107 @@ resource "aws_iam_instance_profile" "ami_building_instance_profile" {
   roles = ["${aws_iam_role.ami_building_role.name}"]
 }
 
+#######
+resource "aws_iam_role" "gitlab_runner_role" {
+  name = "gitlab_runner_role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "gitlab_runner_policy" {
+
+  name = "gitlab_runner_policy"
+
+  role = "${aws_iam_role.ami_building_role.id}"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_instance_profile" "gitlab_runner_instance_profile" {
+  name = "gitlab_runner_instance_profile"
+  roles = ["${aws_iam_role.gitlab_runner_role.name}"]
+}
+
+resource "aws_instance" "runner" {
+
+  ami = "${var.bastion_ami_id}"
+  instance_type = "${var.bastion_instance_type}"
+  key_name = "${var.keypair}"
+  subnet_id = "${module.zone_a.private_subnet_id}"
+
+  vpc_security_group_ids = [
+    "${aws_security_group.runners.id}",
+    "${aws_security_group.bastion_realm.id}"
+  ]
+
+  iam_instance_profile = "${aws_iam_instance_profile.ami_building_instance_profile.id}"
+
+  tags {
+    Name = "gitlab-runner-${var.vpc_name}-${var.az_1}"
+    Bastion_realm_sg_id = "${aws_security_group.bastion_realm.id}"
+  }
+}
+
+resource "aws_security_group" "runners" {
+  name = "gitlab_runners"
+  description = "Allow SSH traffic from the internet"
+  vpc_id = "${aws_vpc.vpc.id}"
+
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = -1
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+####
+
 module "zone_a" {
   source = "github.com/WeScale/tf-mod-aws-az"
 
@@ -95,7 +196,7 @@ resource "aws_instance" "bastion" {
   iam_instance_profile = "${aws_iam_instance_profile.ami_building_instance_profile.id}"
 
   tags {
-    Name = "builder-${var.vpc_name}-${var.az_1}"
+    Name = "gitlab-${var.vpc_name}-${var.az_1}"
     Bastion_realm_sg_id = "${aws_security_group.bastion_realm.id}"
   }
 }
@@ -113,6 +214,20 @@ resource "aws_security_group" "bastions" {
   ingress {
     from_port = 22
     to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 443
+    to_port = 443
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

@@ -1,2 +1,5 @@
-[bastions]
-bastion_srv public_ip="{{ groups['bastions'][0] }}"
+[gitlab]
+{{ hostvars[groups['gitlab'][0]]['inventory_hostname'] }}
+
+[gitlab-runners]
+{{ hostvars[groups['gitlab-runners'][0]]['inventory_hostname'] }}

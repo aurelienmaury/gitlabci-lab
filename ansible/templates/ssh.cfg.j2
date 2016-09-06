@@ -1,5 +1,5 @@
-Host bastion_srv {{ groups['bastions'][0] }}
- HostName {{ groups['bastions'][0] }}
+Host gitlab {{ hostvars[groups['gitlab'][0]]['inventory_hostname'] }}
+ HostName {{ hostvars[groups['gitlab'][0]]['inventory_hostname'] }}
  User {{ srv_user }}
  IdentityFile {{ srv_key_path }}
 
@@ -7,12 +7,12 @@ Host {{ srv_vpc_cidr | regex_replace('(\.0)+\/[1-9]{2}','.*') }}
  StrictHostKeyChecking no
 
 Host {{ srv_public_subnet_cidr | regex_replace('(\.0)+\/[1-9]{2}','.*') }}
- ProxyCommand ssh -t -W %h:%p bastion_srv -F ./ssh.cfg
+ ProxyCommand ssh -t -W %h:%p gitlab -F ./ssh.cfg
  User {{ srv_user }}
  IdentityFile {{ srv_key_path }}
 
 Host {{ srv_private_subnet_cidr | regex_replace('(\.0)+\/[1-9]{2}','.*') }}
- ProxyCommand ssh -t -W %h:%p bastion_srv -F ./ssh.cfg
+ ProxyCommand ssh -t -W %h:%p gitlab -F ./ssh.cfg
  User {{ srv_user }}
  IdentityFile {{ srv_key_path }}
 

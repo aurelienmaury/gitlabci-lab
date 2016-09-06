@@ -4,7 +4,8 @@
 
   pre_tasks:
     - name: Checking for AWS mandatory env vars
-      fail: msg="Mandatory env var {{ item }} not found."
+      fail:
+        msg: "Mandatory env var {{ item }} not found."
       when: lookup('env', item) == ''
       with_items:
         - "AWS_DEFAULT_REGION"
@@ -34,3 +35,9 @@
           [ssh_connection]
           pipelining=True
           ssh_args="-F ssh.cfg"
+
+    - name: Removing generated ssh.cfg
+      shell: >-
+        rm {{ playbook_dir }}/../ssh.cfg
+      args:
+        warn: no

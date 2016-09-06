@@ -1,5 +1,5 @@
-[bastions]
-bastion_srv public_ip="52.208.237.96"
+[gitlab]
+52.210.231.217
 
-[gitlab-ci]
-52.208.237.96
+[gitlab-runners]
+10.111.10.95

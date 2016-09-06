@@ -1,0 +1,30 @@
+---
+- hosts: gitlab
+  become: yes
+
+  pre_tasks:
+    - script: scripts/ansible-seed-debian.sh
+      register: ansible_seed
+      changed_when: ansible_seed.rc == 0
+      failed_when: ansible_seed.rc != 0 and ansible_seed.rc != 42
+
+  roles:
+    - debian-base
+    - gitlab
+
+  tasks:
+    - debug:
+        msg: "Now go create user account for your runners, and retrieve the registration token"
+
+    - shell: >-
+        cat /etc/gitlab/gitlab.rb | sed -rn "s/^external_url 'https:\/\/(.*)'$/\1/p"
+      changed_when: false
+      register:
+        discovered_gitlab_host
+      tags: crt
+
+    - fetch:
+        src: "/etc/gitlab/ssl/{{ discovered_gitlab_host.stdout }}.crt"
+        flat: yes
+        dest: "{{ inventory_dir }}/secrets/ca.crt"
+      tags: crt

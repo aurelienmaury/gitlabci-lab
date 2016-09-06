@@ -1,0 +1,9 @@
+---
+- name: update ca certs
+  shell: >-
+    update-ca-certificates
+
+- name: register to gitlab
+  shell: >
+    docker exec gitlab-runner-{{ gitlab_runner_name }}
+    gitlab-runner register

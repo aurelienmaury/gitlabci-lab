@@ -1,0 +1,57 @@
+---
+- fail: msg="Variable '{{ item }}' is required."
+  when: vars[item] is not defined
+  with_items:
+    - gitlab_runner_name
+    - gitlab_runner_tags
+    - gitlab_runner_user
+    - gitlab_runner_pass
+    - gitlab_runner_master
+    - gitlab_runner_register_url
+    - gitlab_runner_register_token
+
+- name: Rebranding variables
+  set_fact:
+    gitlab_runner_master_crt_path: "/usr/local/share/ca-certificates/{{ gitlab_runner_master }}.crt"
+
+- name: Installing required packages for docker and gitlab-runner install
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - curl
+    - ca-certificates
+    - postfix
+    - debian-archive-keyring
+
+- include: docker.yml
+
+- name: Register to gitlab-ci docker repository so that we can pull custom docker image
+  docker_login:
+    registry: "{{ gitlab_runner_master }}"
+    username: "{{ gitlab_runner_name }}"
+    password: "{{ gitlab_runner_pass }}"
+    reauthorize: yes
+
+- name: Start gitlab-runner container
+  docker_container:
+    name: "gitlab-runner-{{ gitlab_runner_name }}"
+    image: "gitlab/gitlab-runner"
+    state: started
+    restart_policy: "always"
+    env:
+      RUNNER_NAME: "{{ gitlab_runner_name }}"
+      CI_SERVER_URL: "{{ gitlab_runner_register_url }}"
+      RUNNER_TAG_LIST: "{{ gitlab_runner_tags|join(',') }}"
+      RUNNER_EXECUTOR: "docker"
+      REGISTER_NON_INTERACTIVE: true
+      DOCKER_PRIVILEGED: true
+      DOCKER_IMAGE: "docker:latest"
+      REGISTRATION_TOKEN: "{{ gitlab_runner_register_token }}"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/root/.docker:/root/.docker"
+      - "/tmp/gitlab-runner/config:/etc/gitlab-runner"
+      - "/sys:/sys"
+      - "{{ gitlab_runner_master_crt_path }}:/etc/gitlab-runner/certs/{{ gitlab_runner_master }}.crt"
+  notify: register to gitlab
