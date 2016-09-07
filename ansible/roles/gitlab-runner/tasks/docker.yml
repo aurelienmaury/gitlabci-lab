@@ -29,17 +29,17 @@
 
 - name: Create docker trusted certs directory
   file:
-    path: "/etc/docker/certs.d/{{ gitlabci_runner_master }}"
+    path: "/etc/docker/certs.d/{{ gitlab_runner_master }}"
     state: directory
 
 - name: Uploading gitlab crt to docker trusted certs
   copy:
-    src: "{{ gitlabci_runner_master_crt }}"
-    dest: "/etc/docker/certs.d/{{ gitlabci_runner_master }}/ca.crt"
+    src: "{{ gitlab_runner_master_crt }}"
+    dest: "/etc/docker/certs.d/{{ gitlab_runner_master }}/ca.crt"
   notify: update ca certs
 
 - name: Uploading gitlab crt to shared trusted certs
   copy:
-    src: "{{ gitlabci_runner_master_crt }}"
-    dest: "/usr/local/share/ca-certificates/{{ gitlabci_runner_master }}.crt"
+    src: "{{ gitlab_runner_master_crt }}"
+    dest: "/usr/local/share/ca-certificates/{{ gitlab_runner_master }}.crt"
   notify: update ca certs

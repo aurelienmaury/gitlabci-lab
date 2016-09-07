@@ -26,12 +26,11 @@
 
 - include: docker.yml
 
-- name: Register to gitlab-ci docker repository so that we can pull custom docker image
+- name: Login to gitlab docker container repository
   docker_login:
     registry: "{{ gitlab_runner_master }}"
     username: "{{ gitlab_runner_name }}"
     password: "{{ gitlab_runner_pass }}"
-    reauthorize: yes
 
 - name: Start gitlab-runner container
   docker_container:

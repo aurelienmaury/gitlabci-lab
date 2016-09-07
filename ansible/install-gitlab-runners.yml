@@ -1,5 +1,6 @@
 ---
-- hosts: gitlab
+- name: Retrieving hostname of gitlab to get certs right
+  hosts: gitlab
   become: yes
   tasks:
     - shell: >-
@@ -21,17 +22,12 @@
       changed_when: ansible_seed.rc == 0
       failed_when: ansible_seed.rc != 0 and ansible_seed.rc != 42
 
+    - set_fact:
+        gitlab_runner_name: "{{ gitlab_runner_user }}"
+        gitlab_runner_master: "{{ hostvars[groups['gitlab'][0]]['gitlab_host'] }}"
+        gitlab_runner_master_crt: "{{ inventory_dir }}/secrets/ca.crt"
+        gitlab_runner_register_url: "https://{{ hostvars[groups['gitlab'][0]]['gitlab_host'] }}/ci"
+
   roles:
     - debian-base
-    - role: gitlab-runner
-      gitlab_runner_name: "bolt"
-      gitlab_runner_tags:
-        - "std"
-      gitlab_runner_user: "runner"
-      gitlab_runner_pass: "Bidibul42#"
-      gitlab_runner_master: "{{ hostvars[groups['gitlab-ci'][0]]['gitlab_host'] }}"
-      gitlab_runner_master_crt: "{{ inventory_dir }}/secrets/ca.crt"
-      gitlab_runner_register_url: "https://{{ hostvars[groups['gitlab-ci'][0]]['gitlab_host'] }}/ci"
-      gitlab_runner_register_token: "D1u-e2RdpazZMh6E57Cy"
-
-
+    - gitlab-runner
